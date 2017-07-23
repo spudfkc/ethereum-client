@@ -14,6 +14,7 @@ import (
 	"time"
 	"crypto/elliptic"
 	"crypto/rand"
+	"io"
 )
 
 const (
@@ -70,12 +71,21 @@ func (pingNode PingPacket) Pack() []byte {
 }
 
 func (pingNode PingPacket) DecodeRLP(stream *rlp.Stream) error {
-	b, err := stream.Raw()
+	b, err := stream.Bytes()
 	if err != nil {
 		panic(fmt.Sprintf("failed to get bytes from stream: %v", err))
 	}
 	fmt.Printf("GOT STREAM BYTES: %v\n", b)
 
+	return nil
+}
+
+func (pingNode *PingPacket) EncodeRLP(w io.Writer) error {
+	_, err := w.Write(pingNode.Pack())
+	if err != nil {
+		panic(fmt.Sprintf("failed to encode rlp to writer: %v", err))
+	}
+	fmt.Printf("ENCODED PING PACKET")
 	return nil
 }
 
