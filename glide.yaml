@@ -1,0 +1,7 @@
+package: wolfdix-ethereum-client
+import:
+- package: github.com/ethereum/go-ethereum
+  version: ^2.0.0
+  subpackages:
+  - crypto
+  - rlp
