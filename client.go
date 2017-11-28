@@ -2,19 +2,21 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/pkg/errors"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net"
+	"strconv"
 	"sync"
 	"time"
-	"crypto/elliptic"
-	"crypto/rand"
-	"io"
 )
 
 const (
@@ -114,12 +116,12 @@ func (endpoint *EndPoint) Pack() []byte {
 type PingServer struct {
 	MyEndPoint  EndPoint
 	PrivKeyPath string
-	PrivKey     *ecdsa.PrivateKey	// TODO make this private
+	PrivKey     *ecdsa.PrivateKey // TODO make this private
 }
 
 func (pingServer *PingServer) WrapPacket(node EthPacket) []byte {
 	packetType := node.GetPacketType()
-	encodedPacket := rlpencode(node.Pack())
+	encodedPacket, _ := rlp.EncodeToBytes(node.Pack())
 
 	var message []byte
 	message = append(message, packetType)
@@ -188,8 +190,8 @@ func (pingServer *PingServer) UnwrapPacket(data []byte) (EthPacket, error) {
 
 	fmt.Printf("Passed checks!\n")
 
-	decodedMessage := rlpdecode(message)
-	fmt.Printf("decoded message: %v\n", decodedMessage)
+	//decodedMessage := rlpdecode(message)
+	//fmt.Printf("decoded message: %v\n", decodedMessage)
 
 	return nil, nil
 }
@@ -299,15 +301,50 @@ func main() {
 	fmt.Println("done\n")
 }
 
-func rlpencode(b []byte) []byte {
-	result, err := rlp.EncodeToBytes(b)
-	if err != nil {
-		panic(fmt.Sprintf("failed to RLP encode: %v\n", err))
-	}
-	return result
+type RlpItem struct {
 }
 
-func rlpdecode(b []byte) EthPacket {
+func RplEncodeStr(s string) ([]byte, error) {
+	if len(s) == 1 && byte(s[0]) >= 0x00 && byte(s[0]) <= 0x7f {
+		return []byte{s[0]}, nil
+	}
+	if len(s) <= 55 {
+		firstByte := byte(0x80 + len(s))
+		result := []byte{firstByte}
+		result = append(result, s...)
+		return result, nil
+	}
+	if len(s) > 55 {
+
+		stringLen := len(s)
+		stringLen2 := uint32(stringLen)
+		for {
+			numberOfBytes++
+			stringLen2 = stringLen2 >> 4
+		}
+
+		//buf := new(bytes.Buffer)
+		//err := binary.Write(buf, binary.LittleEndian, stringLen)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//bs := []byte(strconv.Itoa(stringLen))
+
+		//firstByte := 0xb7 + len(bs)
+		//result = append(result, byte(firstByte))
+		//result = append(result, bs...)
+		//result = append(result, s...)
+
+		return result, nil
+
+		//secondByte := len(s)
+
+	}
+
+	return nil, errors.New("bad length") // TODO error
+}
+
+func RplDecodeStr(b []byte) EthPacket {
 	//var decodedBytes []byte
 	node := &PingPacket{}
 	err := rlp.DecodeBytes(b, node)
